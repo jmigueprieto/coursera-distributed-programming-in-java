@@ -1,12 +1,14 @@
 package edu.coursera.distributed;
 
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 /**
  * A basic and very limited implementation of a file server that responds to GET
@@ -30,43 +32,34 @@ public final class FileServer {
          * Enter a spin loop for handling client requests to the provided
          * ServerSocket object.
          */
+
         while (true) {
+            Socket s = socket.accept();
+            BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            String[] request = br.readLine().split("\\s");
 
-            // TODO Delete this once you start working on your solution.
-            throw new UnsupportedOperationException();
+            if (!request[0].equals("GET")) {
+                socket.close();
+                continue;
+            }
 
-            // TODO 1) Use socket.accept to get a Socket object
-
-            /*
-             * TODO 2) Using Socket.getInputStream(), parse the received HTTP
-             * packet. In particular, we are interested in confirming this
-             * message is a GET and parsing out the path to the file we are
-             * GETing. Recall that for GET HTTP packets, the first line of the
-             * received packet will look something like:
-             *
-             *     GET /path/to/file HTTP/1.1
-             */
-
-            /*
-             * TODO 3) Using the parsed path to the target file, construct an
-             * HTTP reply and write it to Socket.getOutputStream(). If the file
-             * exists, the HTTP reply should be formatted as follows:
-             *
-             *   HTTP/1.0 200 OK\r\n
-             *   Server: FileServer\r\n
-             *   \r\n
-             *   FILE CONTENTS HERE\r\n
-             *
-             * If the specified file does not exist, you should return a reply
-             * with an error code 404 Not Found. This reply should be formatted
-             * as:
-             *
-             *   HTTP/1.0 404 Not Found\r\n
-             *   Server: FileServer\r\n
-             *   \r\n
-             *
-             * Don't forget to close the output stream.
-             */
+            PCDPPath path = new PCDPPath(request[1]);
+            String fileContent = fs.readFile(path);
+            Writer writer = new OutputStreamWriter(s.getOutputStream());
+            String response;
+            if (fileContent != null) {
+                response = "HTTP/1.0 200 OK\r\n" +
+                        "Server: FileServer\r\n" +
+                        "\r\n" +
+                        fileContent +
+                        "\r\n";
+            } else {
+                response = "HTTP/1.0 404 Not Found\r\n" +
+                        "Server: FileServer\r\n" +
+                        "\r\n";
+            }
+            writer.write(response);
+            writer.close();
         }
     }
 }
